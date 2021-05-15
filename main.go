@@ -12,6 +12,7 @@ import (
 
 	"github.com/nsqio/go-nsq"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var fatalErr error
