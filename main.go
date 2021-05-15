@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/nsqio/go-nsq"
@@ -52,6 +54,7 @@ func main() {
 		return
 	}
 
+	// Waiting NSQ message regulary.
 	q.AddHandler(nsq.HandlerFunc(func(m *nsq.Message) error {
 		countsLock.Lock()
 		defer countsLock.Unlock()
@@ -71,6 +74,7 @@ func main() {
 
 	log.Println("Waiting Vote on NSQ...")
 	var updater *time.Timer
+	// Save counts on MongoDB regulary.
 	updater = time.AfterFunc(updateDuration, func() {
 		countsLock.Lock()
 		defer countsLock.Unlock()
@@ -98,4 +102,18 @@ func main() {
 		}
 		updater.Reset(updateDuration)
 	})
+
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, syscall.SIGINT, syscall.SIGHUP)
+	for {
+		select {
+		case <-termChan:
+			updater.Stop()
+			q.Stop()
+		case <-q.StopChan:
+			// Completed.
+			return
+		}
+	}
+
 }
