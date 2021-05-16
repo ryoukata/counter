@@ -68,7 +68,7 @@ func main() {
 	}))
 
 	// TODO：ホストをコンテナ名に修正すること
-	if err := q.ConnectToNSQLookupd("localhost:4161"); err != nil {
+	if err := q.ConnectToNSQLookupd("twitter-votes-nsqlookupd:4161"); err != nil {
 		fatal(err)
 		return
 	}
