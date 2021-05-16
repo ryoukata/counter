@@ -1,9 +1,6 @@
 name: counter-cicd-actions
 
 on:
-  push:
-    branches:
-      - develop
   pull_request:
     branches:
       - main
@@ -57,10 +54,6 @@ jobs:
     - name: Build the Docker image 
       run: |
         docker build -t ghcr.io/ryoukata/twitter-votes-app/counter \
-        --build-arg SP_TWITTER_KEY=${{ secrets.SP_TWITTER_KEY }} \
-        --build-arg SP_TWITTER_SECRET=${{ secrets.SP_TWITTER_SECRET }} \
-        --build-arg SP_TWITTER_ACCESSTOKEN=${{ secrets.SP_TWITTER_ACCESSTOKEN }} \
-        --build-arg SP_TWITTER_ACCESSSECRET=${{ secrets.SP_TWITTER_ACCESSSECRET }} \
         --build-arg MONGO_PASS=${{ secrets.MONGO_PASS }} \
         .
 
