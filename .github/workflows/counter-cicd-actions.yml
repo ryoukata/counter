@@ -1,0 +1,61 @@
+name: counter-cicd-actions
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-app:
+    name: job build-app
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15
+
+    - name: Build
+      run: GOOS=linux CGO_ENABLED=0 go build -o counter
+
+    # バイナリーをartifactディレクトリにコピーする
+    - name: Copy artifact
+      run: mkdir -p artifact && cp counter artifact/
+
+    # artifactディレクトリ内のファイルをアーティファクトとして保存する
+    - uses: actions/upload-artifact@v1
+      with:
+        name: counter
+        path: artifact
+
+  build-container-image-and-push-image:
+    name: job build-container-image-push-image
+    needs: build-app
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    # 前のジョブで作成したバイナリーを取得（ディレクトリが作成され、その中にバイナリーが入るみたい）
+    - uses: actions/download-artifact@v1
+      with:
+        name: counter
+
+    # Goのビルドで生成したバイナリーに実行権限を追加
+    - name: Add Permission to binary
+      run: chmod +x counter/counter
+
+    # TODO：GitHubのコンテナレジストリにログイン
+    - name: Login GitHub Registory
+      run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+    # TODO：環境変数の設定を追加
+    - name: Build the Docker image 
+      run: |
+        docker build -t ghcr.io/ryoukata/twitter-votes-app/counter \
+        --build-arg MONGO_PASS=${{ secrets.MONGO_PASS }} \
+        .
+
+    - name: Push the Docker image 
+      run: docker push ghcr.io/ryoukata/twitter-votes-app/counter
