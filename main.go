@@ -47,7 +47,7 @@ func main() {
 		MongoSource string `env:"MONGO_SOURCE,required"`
 	}
 	if err := envdecode.Decode(&mongoEnv); err != nil {
-		log.Fatalln(err)
+		fatal(err)
 	}
 	mongoInfo := &mgo.DialInfo{
 		Addrs:    []string{mongoEnv.MongoHost + ":" + mongoEnv.MongoPort},
@@ -72,7 +72,15 @@ func main() {
 	var counts map[string]int
 	log.Println("Connect to NSQ...")
 	// Set up Object to observe NSQ votes Topic.
-	q, err := nsq.NewConsumer("votes", "counter", nsq.NewConfig())
+	var nsqEnv struct {
+		NsqHost  string `env:"NSQ_HOST,required"`
+		NsqPort  string `env:"NSQ_PORT,required"`
+		NsqTopic string `env:"NSQ_TOPIC,required"`
+	}
+	if err := envdecode.Decode(&nsqEnv); err != nil {
+		fatal(err)
+	}
+	q, err := nsq.NewConsumer(nsqEnv.NsqTopic, "counter", nsq.NewConfig())
 	if err != nil {
 		fatal(err)
 		return
@@ -91,7 +99,7 @@ func main() {
 	}))
 
 	// TODO：ホストをコンテナ名に修正すること
-	if err := q.ConnectToNSQLookupd("twitter-votes-nsqlookupd:4161"); err != nil {
+	if err := q.ConnectToNSQLookupd(nsqEnv.NsqHost + ":" + nsqEnv.NsqPort); err != nil {
 		fatal(err)
 		return
 	}
