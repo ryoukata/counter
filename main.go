@@ -26,6 +26,9 @@ func fatal(e error) {
 
 const updateDuration = 1 * time.Second
 
+// connect and close settings for MongoDB.
+var db *mgo.Session
+
 func main() {
 	defer func() {
 		if fatalErr != nil {
@@ -34,7 +37,7 @@ func main() {
 	}()
 
 	log.Println("Connect to DataBase...")
-	// TODO：コンテナ名に修正すること
+	var err error
 	var mongoEnv struct {
 		MongoHost   string `env:"MONGO_HOST,required"`
 		MongoPort   string `env:"MONGO_PORT,required"`
