@@ -1,6 +1,9 @@
 name: counter-cicd-actions
 
 on:
+  push:
+    branches:
+      - develop
   pull_request:
     branches:
       - main

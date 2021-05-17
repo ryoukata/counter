@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joeshaw/envdecode"
 	"github.com/nsqio/go-nsq"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -25,6 +26,9 @@ func fatal(e error) {
 
 const updateDuration = 1 * time.Second
 
+// connect and close settings for MongoDB.
+var db *mgo.Session
+
 func main() {
 	defer func() {
 		if fatalErr != nil {
@@ -33,8 +37,27 @@ func main() {
 	}()
 
 	log.Println("Connect to DataBase...")
-	// TODO：コンテナ名に修正すること
-	db, err := mgo.Dial("localhost")
+	var err error
+	var mongoEnv struct {
+		MongoHost   string `env:"MONGO_HOST,required"`
+		MongoPort   string `env:"MONGO_PORT,required"`
+		MongoDB     string `env:"MONGO_DB,required"`
+		MongoUser   string `env:"MONGO_USER,required"`
+		MongoPass   string `env:"MONGO_PASS,required"`
+		MongoSource string `env:"MONGO_SOURCE,required"`
+	}
+	if err := envdecode.Decode(&mongoEnv); err != nil {
+		fatal(err)
+	}
+	mongoInfo := &mgo.DialInfo{
+		Addrs:    []string{mongoEnv.MongoHost + ":" + mongoEnv.MongoPort},
+		Timeout:  20 * time.Second,
+		Database: mongoEnv.MongoDB,
+		Username: mongoEnv.MongoUser,
+		Password: mongoEnv.MongoPass,
+		Source:   mongoEnv.MongoSource,
+	}
+	db, err = mgo.DialWithInfo(mongoInfo)
 	if err != nil {
 		fatal(err)
 		return
@@ -49,7 +72,15 @@ func main() {
 	var counts map[string]int
 	log.Println("Connect to NSQ...")
 	// Set up Object to observe NSQ votes Topic.
-	q, err := nsq.NewConsumer("votes", "counter", nsq.NewConfig())
+	var nsqEnv struct {
+		NsqHost  string `env:"NSQ_HOST,required"`
+		NsqPort  string `env:"NSQ_PORT,required"`
+		NsqTopic string `env:"NSQ_TOPIC,required"`
+	}
+	if err := envdecode.Decode(&nsqEnv); err != nil {
+		fatal(err)
+	}
+	q, err := nsq.NewConsumer(nsqEnv.NsqTopic, "counter", nsq.NewConfig())
 	if err != nil {
 		fatal(err)
 		return
@@ -68,7 +99,7 @@ func main() {
 	}))
 
 	// TODO：ホストをコンテナ名に修正すること
-	if err := q.ConnectToNSQLookupd("twitter-votes-nsqlookupd:4161"); err != nil {
+	if err := q.ConnectToNSQLookupd(nsqEnv.NsqHost + ":" + nsqEnv.NsqPort); err != nil {
 		fatal(err)
 		return
 	}
