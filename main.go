@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joeshaw/envdecode"
 	"github.com/nsqio/go-nsq"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -34,7 +35,26 @@ func main() {
 
 	log.Println("Connect to DataBase...")
 	// TODO：コンテナ名に修正すること
-	db, err := mgo.Dial("localhost")
+	var mongoEnv struct {
+		MongoHost   string `env:"MONGO_HOST,required"`
+		MongoPort   string `env:"MONGO_PORT,required"`
+		MongoDB     string `env:"MONGO_DB,required"`
+		MongoUser   string `env:"MONGO_USER,required"`
+		MongoPass   string `env:"MONGO_PASS,required"`
+		MongoSource string `env:"MONGO_SOURCE,required"`
+	}
+	if err := envdecode.Decode(&mongoEnv); err != nil {
+		log.Fatalln(err)
+	}
+	mongoInfo := &mgo.DialInfo{
+		Addrs:    []string{mongoEnv.MongoHost + ":" + mongoEnv.MongoPort},
+		Timeout:  20 * time.Second,
+		Database: mongoEnv.MongoDB,
+		Username: mongoEnv.MongoUser,
+		Password: mongoEnv.MongoPass,
+		Source:   mongoEnv.MongoSource,
+	}
+	db, err = mgo.DialWithInfo(mongoInfo)
 	if err != nil {
 		fatal(err)
 		return
